@@ -207,7 +207,7 @@ def get_user_embedding(model, label, maxlen):
     with open(user_history_file) as in_f:
         for line in tqdm(in_f):
             user, history = line.strip().split('\t')
-            events = history.split('\002')
+            events = history.split(',')
 
             seq = np.zeros([maxlen], dtype=np.int32)
             idx = args.maxlen - 1
