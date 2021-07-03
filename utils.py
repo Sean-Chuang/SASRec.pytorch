@@ -204,6 +204,16 @@ def evaluate_valid(model, dataset, args):
 def get_user_embedding(model, label, maxlen):
     user_history_file = f"data/{label}_user_history.txt"
     user_vec = {}
+
+    batch = 1024
+    user_batch, history_batch = [], []
+    count = 0
+
+    def get_batch_result():
+        vectors = model.get_final_feat(np.array(history_batch))
+        for u, vec in zip(user_batch, vectors):
+            user_vec[u] = vec.cpu().data.tolist()
+
     with open(user_history_file) as in_f:
         for line in tqdm(in_f):
             user, history = line.strip().split('\t')
@@ -214,13 +224,27 @@ def get_user_embedding(model, label, maxlen):
                 continue
 
             seq = np.zeros([maxlen], dtype=np.int32)
-            idx = args.maxlen - 1
-            for i in reversed(events):
-                if i == 0:  continue
+            idx = maxlen - 1
+            # events is order by ts desc
+            for i in events:
                 seq[idx] = i
                 idx -= 1
                 if idx == -1: break
 
-            vectors = model.get_final_feat(np.array([seq]))
-            user_vec[user] = vectors[0]
+            user_batch.append(user)
+            history_batch.append(seq)
+
+            if len(user_batch) >= batch:
+                get_batch_result()
+                count += len(user_batch)
+                if count % 10000 == 0:
+                    print(f'Finished user vectors : {count}')
+
+                user_batch, history_batch = [], []
+
+        if len(user_batch) >= 0:
+            get_batch_result()
+            count += len(user_batch)
+            print(f'Finished user vectors : {count}')
+
     return user_vec

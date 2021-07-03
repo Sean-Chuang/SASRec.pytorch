@@ -14,19 +14,22 @@ def str2bool(s):
     return s == 'true'
 
 def save_embedding(model, folder):
+    model.eval()
     # save item embedding
     weights = model.state_dict()['item_emb.weight'].detach().cpu().numpy()
     pd.DataFrame(weights).to_csv(os.path.join(folder, 'item_vec.csv'), index=True)
 
     # save user embedding
-    user_vec = get_user_embedding(model, args.dataset, args.maxlen)
+    with torch.no_grad():
+        user_vec = get_user_embedding(model, args.dataset, args.maxlen)
     user_vec_path = os.path.join(folder, "user_vec.csv")
     pd.DataFrame.from_dict(user_vec, orient='index').to_csv(user_vec_path)
 
 
 def inference(model, dataset):
     model.eval()
-    t_test = evaluate(model, dataset, args)
+    with torch.no_grad():
+        t_test = evaluate(model, dataset, args)
     print('test (NDCG@10: %.4f, HR@10: %.4f)' % (t_test[0], t_test[1]))
 
 if __name__ == '__main__':
@@ -99,7 +102,7 @@ if __name__ == '__main__':
             import pdb; pdb.set_trace()
 
     if args.inference_only:
-        inference(model, dataset, args)
+        inference(model, dataset)
 
     # ce_criterion = torch.nn.CrossEntropyLoss()
     # https://github.com/NVIDIA/pix2pixHD/issues/9 how could an old bug appear again...
@@ -147,7 +150,7 @@ if __name__ == '__main__':
             best_metric = t_test[1]
             best_epcho = epoch
             torch.save(model.state_dict(), model_path)
-            print(f'Update best epcho : {best_epcho}')
+            print(f'Update best epcho : {best_epcho}\n')
 
         if epoch - best_epcho >= args.early_stop:
             print('Early Stop...')
@@ -160,7 +163,7 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(model_path))
     print('Load model from ' + model_path)
 
-    inference(model, dataset, args)
+    inference(model, dataset)
     save_embedding(model, train_dir)
 
     f.close()
