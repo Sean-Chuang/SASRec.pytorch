@@ -34,10 +34,8 @@ with data as (
 )
 select 
     user_id,
-    content_id,
-    'au_pay'
+    content_id as item_id
 from data
 inner join user_list using (user_id)
 inner join item_list using (content_id)
 order by user_id, ts
-;

@@ -100,9 +100,10 @@ for epoch in range(epoch_start_idx, args.num_epochs + 1):
         for param in model.item_emb.parameters(): loss += args.l2_emb * torch.norm(param)
         loss.backward()
         adam_optimizer.step()
-        print("loss in epoch {} iteration {}: {}".format(epoch, step, loss.item())) # expected 0.4~0.6 after init few epochs
+        if step % 1000 == 0:
+            print("loss in epoch {} iteration {}: {}".format(epoch, step, loss.item())) # expected 0.4~0.6 after init few epochs
 
-    if epoch % 20 == 0:
+    if epoch % 5 == 0:
         model.eval()
         t1 = time.time() - t0
         T += t1
