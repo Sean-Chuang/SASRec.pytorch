@@ -59,7 +59,7 @@ def query_user_history(label, dt, item2id):
     column_names = [desc[0] for desc in cursor.description]
     df = pd.DataFrame(cursor.fetchall(), columns=column_names)
 
-    df['rtg_item'] = df['rtg_item'].apply(lambda x: ','.join([item2id.get(e, 0) for e in x]))
+    df['rtg_item'] = df['rtg_item'].apply(lambda x: ','.join([str(item2id.get(e, 0)) for e in x]))
     df = df.reset_index(drop=True)
     print(df.head(), '\n------------------\n')
 
