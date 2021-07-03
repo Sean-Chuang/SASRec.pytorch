@@ -2,6 +2,7 @@ import os
 import time
 import torch
 import argparse
+import pandas as pd
 
 from model import SASRec
 from tqdm import tqdm
@@ -12,19 +13,36 @@ def str2bool(s):
         raise ValueError('Not a valid boolean string')
     return s == 'true'
 
+def get_model_path(args):
+    folder = args.dataset + '_' + args.train_dir
+    fname = 'SASRec.epoch={}.lr={}.layer={}.head={}.hidden={}.maxlen={}.pth'
+    fname = fname.format(args.num_epochs, args.lr, args.num_blocks, args.num_heads, args.hidden_units, args.maxlen)
+    return os.path.join(folder, fname)
+
+def save_embedding(model, args):
+    folder = args.dataset + '_' + args.train_dir
+    weights = model.state_dict()['item_emb.weight'].detach().cpu().numpy()
+    pd.DataFrame(weights).to_csv(os.path.join(folder, 'item_vec.csv'), index=True)
+
+def inference(model, dataset, args):
+    model.eval()
+    t_test = evaluate(model, dataset, args)
+    print('test (NDCG@10: %.4f, HR@10: %.4f)' % (t_test[0], t_test[1]))
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', required=True)
 parser.add_argument('--train_dir', required=True)
-parser.add_argument('--batch_size', default=128, type=int)
+parser.add_argument('--batch_size', default=256, type=int)
 parser.add_argument('--lr', default=0.001, type=float)
-parser.add_argument('--maxlen', default=50, type=int)
-parser.add_argument('--hidden_units', default=50, type=int)
+parser.add_argument('--maxlen', default=20, type=int)
+parser.add_argument('--hidden_units', default=32, type=int)
 parser.add_argument('--num_blocks', default=2, type=int)
-parser.add_argument('--num_epochs', default=201, type=int)
+parser.add_argument('--num_epochs', default=50, type=int)
 parser.add_argument('--num_heads', default=1, type=int)
 parser.add_argument('--dropout_rate', default=0.5, type=float)
 parser.add_argument('--l2_emb', default=0.0, type=float)
 parser.add_argument('--device', default='cpu', type=str)
+parser.add_argument('--early_stop', default=10, type=int)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
 
@@ -73,9 +91,7 @@ if args.state_dict_path is not None:
         
 
 if args.inference_only:
-    model.eval()
-    t_test = evaluate(model, dataset, args)
-    print('test (NDCG@10: %.4f, HR@10: %.4f)' % (t_test[0], t_test[1]))
+    inference(model, dataset, args)
 
 # ce_criterion = torch.nn.CrossEntropyLoss()
 # https://github.com/NVIDIA/pix2pixHD/issues/9 how could an old bug appear again...
@@ -84,6 +100,7 @@ adam_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.
 
 T = 0.0
 t0 = time.time()
+best_epcho, best_metric = 0, 0.0
 
 for epoch in range(epoch_start_idx, args.num_epochs + 1):
     if args.inference_only: break # just to decrease identition
@@ -103,26 +120,36 @@ for epoch in range(epoch_start_idx, args.num_epochs + 1):
         if step % 1000 == 0:
             print("loss in epoch {} iteration {}: {}".format(epoch, step, loss.item())) # expected 0.4~0.6 after init few epochs
 
-    if epoch % 5 == 0:
-        model.eval()
-        t1 = time.time() - t0
-        T += t1
-        print('Evaluating', end='')
-        t_test = evaluate(model, dataset, args)
-        t_valid = evaluate_valid(model, dataset, args)
-        print('epoch:%d, time: %f(s), valid (NDCG@10: %.4f, HR@10: %.4f), test (NDCG@10: %.4f, HR@10: %.4f)'
-                % (epoch, T, t_valid[0], t_valid[1], t_test[0], t_test[1]))
+    # Do eval after each epcho done
+    model.eval()
+    t1 = time.time() - t0
+    T += t1
+    print('Evaluating', end='')
+    t_test = evaluate(model, dataset, args)
+    t_valid = evaluate_valid(model, dataset, args)
+    print('epoch:%d, time: %f(s), valid (NDCG@10: %.4f, HR@10: %.4f), test (NDCG@10: %.4f, HR@10: %.4f)'
+            % (epoch, T, t_valid[0], t_valid[1], t_test[0], t_test[1]))
 
-        f.write(str(t_valid) + ' ' + str(t_test) + '\n')
-        f.flush()
-        t0 = time.time()
-        model.train()
+    f.write(str(t_valid) + ' ' + str(t_test) + '\n')
+    f.flush()
+    t0 = time.time()
 
-    if epoch == args.num_epochs:
-        folder = args.dataset + '_' + args.train_dir
-        fname = 'SASRec.epoch={}.lr={}.layer={}.head={}.hidden={}.maxlen={}.pth'
-        fname = fname.format(args.num_epochs, args.lr, args.num_blocks, args.num_heads, args.hidden_units, args.maxlen)
-        torch.save(model.state_dict(), os.path.join(folder, fname))
+    if t_test[1] >= best_metric:
+        best_metric = t_test[1]
+        best_epcho = epoch
+        torch.save(model.state_dict(), get_model_path(args))
+
+    if epoch - best_epcho >= args.early_stop:
+        print('Early Stop...')
+        break
+
+    # set train mode
+    model.train()
+
+# load best epcho and save user emb. / item emb.
+model.load_model(get_model_path(args))
+inference(model, dataset, args)
+save_embedding(model, args)
 
 f.close()
 sampler.close()

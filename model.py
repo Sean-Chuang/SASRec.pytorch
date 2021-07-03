@@ -119,3 +119,9 @@ class SASRec(torch.nn.Module):
         # preds = self.pos_sigmoid(logits) # rank same item list for different users
 
         return logits # preds # (U, I)
+
+    def get_final_feat(self, log_seqs):
+        log_feats = self.log2feats(log_seqs)
+        final_feat = log_feats[:, -1, :]
+
+        return final_feat
