@@ -63,7 +63,7 @@ def query_user_history(label, dt, item2id):
     df = df.reset_index(drop=True)
     print(df.head(), '\n------------------\n')
 
-    df.to_csv(f'{DATA_DEST}/{label}_user_history.txt', index=False, header=False, sep=' ')
+    df.to_csv(f'{DATA_DEST}/{label}_user_history.txt', index=False, header=False, sep='\t')
 
 
 if __name__ == '__main__':

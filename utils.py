@@ -3,6 +3,7 @@ import copy
 import torch
 import random
 import numpy as np
+from tqdm import tqdm
 from collections import defaultdict
 from multiprocessing import Process, Queue
 
@@ -198,3 +199,24 @@ def evaluate_valid(model, dataset, args):
             sys.stdout.flush()
 
     return NDCG / valid_user, HT / valid_user
+
+
+def get_user_embedding(model, label, maxlen):
+    user_history_file = f"data/{label}_user_history.txt"
+    user_vec = {}
+    with open(user_history_file) as in_f:
+        for line in tqdm(in_f):
+            user, history = line.strip().split('\t')
+            events = history.split('\002')
+
+            seq = np.zeros([maxlen], dtype=np.int32)
+            idx = args.maxlen - 1
+            for i in reversed(events):
+                if i == 0:  continue
+                seq[idx] = i
+                idx -= 1
+                if idx == -1: break
+
+            vectors = model.get_final_feat(np.array([seq]))
+            user_vec[user] = vectors[0]
+    return user_vec
