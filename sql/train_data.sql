@@ -2,9 +2,9 @@ with data as (
     select 
         *
     from hive_ad.datafeed.daily_i2i_data_raw
-    where label='au_pay'
-        and dt > date_format(date_add('day', -20, date('2021-06-25')), '%Y-%m-%d')
-        and dt <= '2021-06-25'
+    where label='{label}'
+        and dt > date_format(date_add('day', -{recency}, date('{dt}')), '%Y-%m-%d')
+        and dt <= '{dt}'
 ), p_data as (
     select 
         user_id,

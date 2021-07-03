@@ -7,10 +7,16 @@ from pyhive import presto
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 DATA_DEST = os.path.join(CURRENT_PATH, "..", "data")
 
-def run(label):
+def query_train_data(label, dt):
     cursor = presto.connect('presto.smartnews.internal',8081).cursor()
-    with open(f"{label}.sql", 'r') as file:
-        sql = file.read()
+    param = {
+        "label": label,
+        "dt": dt,
+        "recency": 15
+    }
+
+    with open(f"train_data.sql", 'r') as file:
+        sql = f"{file.read()}".format(**param)
         print(sql)
     cursor.execute(sql)
     column_names = [desc[0] for desc in cursor.description]
@@ -33,7 +39,35 @@ def run(label):
     print(df.head(), '\n------------------\n')
 
     df.to_csv(f'{DATA_DEST}/{label}.txt', index=False, header=False, sep=' ')
+    return item2id
+
+
+def query_user_history(label, dt, item2id):
+    cursor = presto.connect('presto.smartnews.internal',8081).cursor()
+    param = {
+        "label": label,
+        "dt": dt,
+        "history_max": 20,
+        "recency": 15
+    }
+
+    with open(f"user_history.sql", 'r') as file:
+        sql = f"{file.read()}".format(**param)
+        print(sql)
+
+    cursor.execute(sql)
+    column_names = [desc[0] for desc in cursor.description]
+    df = pd.DataFrame(cursor.fetchall(), columns=column_names)
+
+    df['rtg_item'] = df['rtg_item'].apply(lambda x: [item2id.get(e, 0) for e in x])
+    df = df.reset_index(drop=True)
+    print(df.head(), '\n------------------\n')
+
+    df.to_csv(f'{DATA_DEST}/{label}_user_history.txt', index=False, header=False, sep=' ')
+
 
 if __name__ == '__main__':
     label = "au_pay"
-    run(label)
+    dt = "2021-06-26"
+    item2id = query_train_data(label, dt)
+    query_user_history(label, dt, item2id)
