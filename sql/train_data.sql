@@ -22,8 +22,9 @@ with data as (
     select
         user_id
     from p_data_stddev a
-    where abs(zscore) <= 10
+    where abs(zscore) <= 15
         and user_count >= 3
+        {sn_user_condition}
 ), item_list as (
     select 
         content_id

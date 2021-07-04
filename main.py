@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', required=True)
     parser.add_argument('--train_dir', required=True)
-    parser.add_argument('--batch_size', default=128, type=int)
+    parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--maxlen', default=20, type=int)
     parser.add_argument('--hidden_units', default=32, type=int)
@@ -46,12 +46,12 @@ if __name__ == '__main__':
     parser.add_argument('--dropout_rate', default=0.5, type=float)
     parser.add_argument('--l2_emb', default=0.0, type=float)
     parser.add_argument('--device', default='cpu', type=str)
-    parser.add_argument('--early_stop', default=10, type=int)
+    parser.add_argument('--early_stop', default=5, type=int)
     parser.add_argument('--inference_only', default=False, type=str2bool)
     parser.add_argument('--state_dict_path', default=None, type=str)
     args = parser.parse_args()
 
-    train_dir = args.dataset + '_' + args.train_dir
+    train_dir = os.path.join(args.dataset, args.train_dir)
     fname = 'SASRec.epoch={}.lr={}.layer={}.head={}.hidden={}.maxlen={}.pth'
     model_name = fname.format(args.num_epochs, args.lr, args.num_blocks, args.num_heads, args.hidden_units, args.maxlen)
     model_path = os.path.join(train_dir, model_name)
@@ -151,6 +151,8 @@ if __name__ == '__main__':
             best_epcho = epoch
             torch.save(model.state_dict(), model_path)
             print(f'Update best epcho : {best_epcho}\n')
+        else:
+            print(f'Best epcho : {best_epcho}\n')
 
         if epoch - best_epcho >= args.early_stop:
             print('Early Stop...')
