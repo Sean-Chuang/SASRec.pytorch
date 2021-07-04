@@ -5,6 +5,7 @@ with data as (
     where label='{label}'
         and dt > date_format(date_add('day', -{recency}, date('{dt}')), '%Y-%m-%d')
         and dt <= '{dt}'
+	{sn_user_condition}
 ), p_data as (
     select 
         user_id,
@@ -24,7 +25,6 @@ with data as (
     from p_data_stddev a
     where abs(zscore) <= 15
         and user_count >= 3
-        {sn_user_condition}
 ), item_list as (
     select 
         content_id
