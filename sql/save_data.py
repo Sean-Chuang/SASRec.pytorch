@@ -7,12 +7,12 @@ from pyhive import presto
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 DATA_DEST = os.path.join(CURRENT_PATH, "..", "data")
 
-def query_train_data(label, dt, sn_user_only=False):
+def query_train_data(label, dt, recency=30, sn_user_only=False):
     cursor = presto.connect('presto.smartnews.internal',8081).cursor()
     param = {
         "label": label,
         "dt": dt,
-        "recency": 30,
+        "recency": recency,
         "sn_user_condition": "and length(user_id) = 42" if sn_user_only else ""
     }
 
@@ -43,12 +43,12 @@ def query_train_data(label, dt, sn_user_only=False):
     return item2id
 
 
-def query_user_history(label, dt, item2id):
+def query_user_history(label, dt, item2id, maxlen=20):
     cursor = presto.connect('presto.smartnews.internal',8081).cursor()
     param = {
         "label": label,
         "dt": dt,
-        "history_max": 20,
+        "history_max": maxlen,
         "recency": 15
     }
 
@@ -68,7 +68,9 @@ def query_user_history(label, dt, item2id):
 
 
 if __name__ == '__main__':
-    label = "au_pay"
+    label = "adidas"
     dt = "2021-07-02"
-    item2id = query_train_data(label, dt)
-    query_user_history(label, dt, item2id)
+    train_recency = 30
+    maxlen = 20
+    item2id = query_train_data(label, dt, train_recency, False)
+    query_user_history(label, dt, item2id, maxlen)
