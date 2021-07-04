@@ -29,7 +29,7 @@ def query_train_data(label, dt, recency=30, sn_user_only=False):
     item2id = dict(zip(iids, range(1, len(iids) + 1)))
 
     # save in dictionary
-    vocab_path = "vocab.pkl"
+    vocab_path = f"{DATA_DEST}/{label}_vocab.pkl"
     pkl.dump((user2id, item2id), open(vocab_path, 'wb'))
     print(f"Users size: {len(user2id)}")
     print(f"Items size: {len(item2id)}")

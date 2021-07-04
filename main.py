@@ -112,7 +112,9 @@ if __name__ == '__main__':
     # start training
     T = 0.0
     t0 = time.time()
-    best_epcho, best_metric = 0, 0.0
+    best_epcho = 0
+    valid_best, test_best = 0.0, 0.0
+
 
     for epoch in range(epoch_start_idx, args.num_epochs + 1):
         if args.inference_only: break # just to decrease identition
@@ -146,8 +148,9 @@ if __name__ == '__main__':
         f.flush()
         t0 = time.time()
 
-        if t_test[1] >= best_metric:
-            best_metric = t_test[1]
+        if t_valid[1] * 0.9 + t_test[1] >= valid_best * 0.9 + test_best:
+            valid_best = t_valid[1]
+            test_best = t_test[1]
             best_epcho = epoch
             torch.save(model.state_dict(), model_path)
             print(f'Update best epcho : {best_epcho}\n')
