@@ -82,7 +82,7 @@ def data_partition(fname):
     user_valid = {}
     user_test = {}
     # assume user/item index starting from 1
-    f = open('data/%s.txt' % fname, 'r')
+    f = open(f'data/{fname}.txt', 'r')
     for line in f:
         u, i = line.rstrip().split(' ')
         u = int(u)
